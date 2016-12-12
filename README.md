@@ -14,3 +14,18 @@ to make just run : make
 
 # Windows
 Coming soon.
+
+#Usage 
+cpu-gen [!keyvault_location] [!algo_type] [!serial_number] [thread_count] [start_seed]
+
+NOTE : Each argument with a ! in it, needs to be set, without ! is optional.
+[keyvault_location] - The filepath to the ENCRYPTED keyvault.
+[algo_type] - The also to use, can be 1, 2, 3, 4
+[serial_number] - Your console serial number, 12 numbers.
+[thread_count] - The number of cpu threads to use, default: num of cpu cores.
+[starting_seed] - The seed to start with, must be 16 bytes long.
+
+Algo 1 Random + Hash
+Algo 2 Random + Increment
+Algo 3 Start Seed + Hash
+Algo 4 Start Seed + Increment

@@ -38,7 +38,7 @@ unsigned char *cpu_key, *serial_num;
 uint8_t *kvheader;
 uint8_t *hmac;
 
-int debug = 0, mine = 1, end_miner = 0, wait = 0, at = 0;
+int debug = 1, mine = 1, at = 0;
 uint64_t total_hashes = 0;
 
 /*
@@ -77,7 +77,7 @@ void* brute_thread(void* id) {
         case 2: // Random - Increment.
             kn = 0;
             while(kn < 16) {
-                kp[kn] = (char)rand() | 0;
+                kp[kn] = (char)rand() % 100 / 2;
                 kn++;
             }
             break;
@@ -90,7 +90,7 @@ void* brute_thread(void* id) {
                 kn++;
             }
             // Randomise some of the seed.
-            cpu_key[15] += rand();
+            cpu_key[tid]++; // To make sure we're not mining the same thing on each thread.
             break;
             
     }
@@ -98,9 +98,7 @@ void* brute_thread(void* id) {
     MD5_Init(&mdcontext);
     MD5_Update(&mdcontext, key, 16);
     MD5_Final(cpu_key, &mdcontext);
-    
-    hmac_key = malloc(20);
-    while(mine > 0 && end_miner == 0) {
+    while(mine > 0) {
         // Generate Hmac Key for decryption.
         hmac_key = HMAC_SHA1((const char*)kp, (const unsigned char*)hmac_buf);
         
@@ -113,7 +111,7 @@ void* brute_thread(void* id) {
         
         // Decrypt kv_header and compare to know serial number.
         rc4_init(rc4, buf2, 16);
-        rc4_crypt(rc4, (const uint8_t*)kvheader, &buf4, 182);
+        rc4_crypt(rc4, kvheader, &buf4, 182);
         
         // Compare The serial number.
         if(buf4[171] == (uint8_t)serial_num[11] &&
@@ -133,117 +131,118 @@ void* brute_thread(void* id) {
             
             kn = 0;
             while(kn < 16) {
-                printf("%02X", cpu_key[kn]);
+                printf("%02X", kp[kn]);
                 kn++;
             }
             printf("\n");
-            end_miner = 1;
+            mine = 0;
+            pthread_exit(NULL);
         }
         else { // Get a new cpu key for next round.
             switch(at) {
                 case 1:
                 case 3:
                     MD5_Init(&mdcontext);
-                    MD5_Update(&mdcontext, key, 16);
-                    MD5_Final(cpu_key, &mdcontext);
+                    MD5_Update(&mdcontext, (unsigned char *)kp, 16);
+                    MD5_Final((unsigned char*)kp, &mdcontext);
                     break;
                 case 2:
                 case 4:
-                    if(cpu_key[15] == 255) {
-                        cpu_key[15] = 0;
-                        if(cpu_key[14] == 255) {
-                            cpu_key[14] = 0;
-                            if(cpu_key[13] == 255) {
-                                cpu_key[13] = 0;
-                                if(cpu_key[12] == 255) {
-                                    cpu_key[12] = 0;
-                                    if(cpu_key[11] == 255) {
-                                        cpu_key[11] = 0;
-                                        if(cpu_key[10] == 255) {
-                                            cpu_key[10] = 0;
-                                            if(cpu_key[9] == 255) {
-                                                cpu_key[9] = 0;
-                                                if(cpu_key[8] == 255) {
-                                                    cpu_key[8] = 0;
-                                                    if(cpu_key[7] == 255) {
-                                                        cpu_key[7] = 0;
-                                                        if(cpu_key[6] == 255) {
-                                                            cpu_key[6] = 0;
-                                                            if(cpu_key[5] == 255) {
-                                                                cpu_key[5] = 0;
-                                                                if(cpu_key[4] == 255) {
-                                                                    cpu_key[4] = 0;
-                                                                    if(cpu_key[3] == 255) {
-                                                                        cpu_key[3] = 0;
-                                                                        if(cpu_key[2] == 255) {
-                                                                            cpu_key[2] = 0;
-                                                                            if(cpu_key[1] == 255) {
-                                                                                cpu_key[1] = 0;
-                                                                                if(cpu_key[0] == 255) {
-                                                                                    cpu_key[0] = 0;
+                    if(kp[15] == 255) {
+                        kp[15] = 0;
+                        if(kp[14] == 255) {
+                            kp[14] = 0;
+                            if(kp[13] == 255) {
+                                kp[13] = 0;
+                                if(kp[12] == 255) {
+                                    kp[12] = 0;
+                                    if(kp[11] == 255) {
+                                        kp[11] = 0;
+                                        if(kp[10] == 255) {
+                                            kp[10] = 0;
+                                            if(kp[9] == 255) {
+                                                kp[9] = 0;
+                                                if(kp[8] == 255) {
+                                                    kp[8] = 0;
+                                                    if(kp[7] == 255) {
+                                                        kp[7] = 0;
+                                                        if(kp[6] == 255) {
+                                                            kp[6] = 0;
+                                                            if(kp[5] == 255) {
+                                                                kp[5] = 0;
+                                                                if(kp[4] == 255) {
+                                                                    kp[4] = 0;
+                                                                    if(kp[3] == 255) {
+                                                                        kp[3] = 0;
+                                                                        if(kp[2] == 255) {
+                                                                            kp[2] = 0;
+                                                                            if(kp[1] == 255) {
+                                                                                kp[1] = 0;
+                                                                                if(kp[0] == 255) {
+                                                                                    kp[0] = 0;
                                                                                 }
                                                                                 else {
-                                                                                    cpu_key[0]++;
+                                                                                    kp[0]++;
                                                                                 }
                                                                             }
                                                                             else {
-                                                                                cpu_key[1]++;
+                                                                                kp[1]++;
                                                                             }
                                                                         }
                                                                         else {
-                                                                            cpu_key[2]++;
+                                                                            kp[2]++;
                                                                         }
                                                                     }
                                                                     else {
-                                                                        cpu_key[3]++;
+                                                                        kp[3]++;
                                                                     }
                                                                 }
                                                                 else {
-                                                                    cpu_key[4]++;
+                                                                    kp[4]++;
                                                                 }
                                                             }
                                                             else {
-                                                                cpu_key[5]++;
+                                                                kp[5]++;
                                                             }
                                                         }
                                                         else {
-                                                            cpu_key[6]++;
+                                                            kp[6]++;
                                                         }
                                                     }
                                                     else {
-                                                        cpu_key[7]++;
+                                                        kp[7]++;
                                                     }
                                                 }
                                                 else {
-                                                    cpu_key[8]++;
+                                                    kp[8]++;
                                                 }
                                             }
                                             else {
-                                                cpu_key[9]++;
+                                                kp[9]++;
                                             }
                                         }
                                         else {
-                                            cpu_key[10]++;
+                                            kp[10]++;
                                         }
                                     }
                                     else {
-                                        cpu_key[11]++;
+                                        kp[11]++;
                                     }
                                 }
                                 else {
-                                    cpu_key[12]++;
+                                    kp[12]++;
                                 }
                             }
                             else {
-                                cpu_key[13]++;
+                                kp[13]++;
                             }
                         }
                         else {
-                            cpu_key[14]++;
+                            kp[14]++;
                         }
                     }
                     else {
-                        cpu_key[15]++;
+                        kp[15]++;
                     }
                     break;
             }
@@ -281,11 +280,11 @@ int count_processors(void)
  * Usage.
  */
 void usage() {
-    printf("XCPUKey-Miner - 0.1a Beta by Hect0r\n"
-           "Usage : cpu-miner [!keyvault_location] [!algo_type] [!serial_number] [thread_count] [start_seed]\n"
+    printf("XCPUKey-Brute-Forcer - 0.1a Beta by Hect0r\n"
+           "Usage : cpu-gen [!keyvault_location] [!algo_type] [!serial_number] [thread_count] [start_seed]\n"
            " NOTE : Each argument with a ! in it, needs to be set, without ! is optional.\n"
            "[keyvault_location] - The filepath to the ENCRYPTED keyvault.\n"
-           "[algo_type] - The also to use, can be 1, 2, 3, 4, 5 (See Read Me).\n"
+           "[algo_type] - The also to use, can be 1, 2, 3, 4 (See Read Me).\n"
            "[serial_number] - Your console serial number, 12 numbers.\n"
            "[thread_count] - The number of cpu threads to use, default: num of cpu cores.\n"
            "[starting_seed] - The seed to start with, must be 16 bytes long.\n");
@@ -426,7 +425,7 @@ int main(int argc, char** argv) {
         
         gettimeofday(&tv_now, NULL);
     }
-    
+    pthread_exit(NULL);
     return (EXIT_SUCCESS);
 }
 
