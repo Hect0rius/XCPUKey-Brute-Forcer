@@ -294,6 +294,7 @@ void usage() {
  */
 int main(int argc, char** argv) {
 
+    printf("XCPUKey-Brute-Forcer - 0.1c Beta by Hect0r\n");
     int nthreads = 0, t = 0, rc = 0;
     const char* kv_location;
     
@@ -304,7 +305,6 @@ int main(int argc, char** argv) {
     
     kv_location = argv[1];
     
-    //FILE* kv = file_handle(kv_location, "r");
     FILE *kv = fopen(kv_location, "r");
     fseek(kv, 0, SEEK_SET);
     hmac = malloc(16);
@@ -359,7 +359,7 @@ int main(int argc, char** argv) {
     if(argc >= 5) {
         nthreads = atoi(argv[4]);
         
-        if(nthreads < 0 || nthreads == 0) {
+        if(nthreads < 0 || nthreads == 0 || nthreads > 16) {
             nthreads = count_processors();
         }
     
