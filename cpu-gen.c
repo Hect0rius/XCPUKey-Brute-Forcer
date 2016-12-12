@@ -38,7 +38,7 @@ unsigned char *cpu_key, *serial_num;
 uint8_t *kvheader;
 uint8_t *hmac;
 
-int debug = 1, mine = 1, at = 0;
+int debug = 0, mine = 1, at = 0;
 uint64_t total_hashes = 0;
 
 /*
@@ -280,7 +280,7 @@ int count_processors(void)
  * Usage.
  */
 void usage() {
-    printf("XCPUKey-Brute-Forcer - 0.1a Beta by Hect0r\n"
+    printf("XCPUKey-Brute-Forcer - 0.1c Beta by Hect0r\n"
            "Usage : cpu-gen [!keyvault_location] [!algo_type] [!serial_number] [thread_count] [start_seed]\n"
            " NOTE : Each argument with a ! in it, needs to be set, without ! is optional.\n"
            "[keyvault_location] - The filepath to the ENCRYPTED keyvault.\n"
