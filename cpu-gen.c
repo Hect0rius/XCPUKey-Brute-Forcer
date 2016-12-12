@@ -38,7 +38,7 @@ unsigned char *cpu_key, *serial_num;
 uint8_t *kvheader;
 uint8_t *hmac;
 
-int debug = 0, mine = 1, at = 0;
+int debug = 1, mine = 1, at = 0;
 uint64_t total_hashes = 0;
 
 /*
@@ -90,14 +90,19 @@ void* brute_thread(void* id) {
                 kn++;
             }
             // Randomise some of the seed.
-            cpu_key[tid]++; // To make sure we're not mining the same thing on each thread.
+            int num = 0; 
+            while(num >= 16) {
+                num = rand();
+            }
+            if(kp[num] == 255) {
+                kp[num] = 0;
+            }
+            else { 
+                kp[num]++;
+            }// To make sure we're not mining the same thing on each thread.
             break;
             
     }
-    
-    MD5_Init(&mdcontext);
-    MD5_Update(&mdcontext, key, 16);
-    MD5_Final(cpu_key, &mdcontext);
     while(mine > 0) {
         // Generate Hmac Key for decryption.
         hmac_key = HMAC_SHA1((const char*)kp, (const unsigned char*)hmac_buf);
@@ -293,22 +298,19 @@ void usage() {
  * Main Entry point.
  */
 int main(int argc, char** argv) {
-
-    printf("XCPUKey-Brute-Forcer - 0.1c Beta by Hect0r\n");
     int nthreads = 0, t = 0, rc = 0;
-    const char* kv_location;
     
     if(argc < 2) {
         usage();
         return EXIT_SUCCESS;
     }
     
-    kv_location = argv[1];
+    printf("XCPUKey-Brute-Forcer - 0.1c Beta by Hect0r\n");
     
-    FILE *kv = fopen(kv_location, "r");
+    FILE *kv = fopen(argv[1], "r");
     fseek(kv, 0, SEEK_SET);
     hmac = malloc(16);
-    if(fread(hmac, 16 + 1, 1, kv) != 1) {
+    if(fread(hmac, 16, 1, kv) != 1) {
         fprintf(stderr, "Cannot read HMAC from KeyVault file...\n");
         return 1;
     }
@@ -324,7 +326,7 @@ int main(int argc, char** argv) {
     }
     kvheader = malloc(182);
     fseek(kv, 16, SEEK_SET);
-    if(fread(kvheader, 182 + 1, 1, kv) != 1) {
+    if(fread(kvheader, 182, 1, kv) != 1) {
         fprintf(stderr, "Unable to read kv header from KeyVault...\n");
         return 1;
     }
@@ -391,7 +393,7 @@ int main(int argc, char** argv) {
         printf("KV Location %s\n"
                "Num Threads is %d\n"
                "Algo type : %d.\n", 
-                kv_location, nthreads, at);
+                argv[1], nthreads, at);
     }
     
     pthread_t threads[nthreads];
@@ -399,7 +401,7 @@ int main(int argc, char** argv) {
     
     // Start Mining Threads.
     for(t = 0; t < nthreads; t++) {
-        rc = pthread_create(&threads[t], NULL, brute_thread, (void *)t);
+        rc = pthread_create(&threads[t], NULL, brute_thread, (void*)t);
         if (rc){
             fprintf(stderr, "ERROR: could not create thread %d\n", t);
             exit(1);
