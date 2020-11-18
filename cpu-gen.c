@@ -38,7 +38,7 @@ unsigned char *cpu_key, *serial_num;
 uint8_t *kvheader;
 uint8_t *hmac;
 
-int debug = 1, mine = 1, at = 0;
+int debug = 1, mine = 1;
 uint64_t total_hashes = 0;
 
 /*
@@ -59,7 +59,7 @@ void* brute_thread(void* id) {
     rc4_state_t* rc4 = malloc(sizeof(rc4_state_t));
     // Outputs.
     uint8_t buf2[20];
-    uint8_t* buf4 = malloc(182);
+    uint8_t* buf4 = malloc(16383);
    
     int kn = 0;
     
@@ -71,38 +71,12 @@ void* brute_thread(void* id) {
         kn++;
     }
     
-    // Set key based on algo.
-    switch(at) {
-        case 1: // Random - Hash
-        case 2: // Random - Increment.
-            kn = 0;
-            while(kn < 16) {
-                kp[kn] = (char)rand() % 100 / 2;
-                kn++;
-            }
-            break;
-        case 3: // Start Seed - Hash
-        case 4: // Start Seed - Increment
-            
-            kn = 0;
-            while(kn < 16) {
-                kp[kn] = (char)cpu_key[kn];
-                kn++;
-            }
-            // Randomise some of the seed.
-            int num = 0; 
-            while(num >= 16) {
-                num = rand();
-            }
-            if(kp[num] == 255) {
-                kp[num] = 0;
-            }
-            else { 
-                kp[num]++;
-            }// To make sure we're not mining the same thing on each thread.
-            break;
-            
-    }
+    // Set key based on random.
+    kn = 0;
+	while(kn < 16) {
+        kp[kn] = (char)rand() % 100 / 2;
+		kn++;
+	}
     while(mine > 0) {
         // Generate Hmac Key for decryption.
         hmac_key = HMAC_SHA1((const char*)kp, (const unsigned char*)hmac_buf);
@@ -116,7 +90,7 @@ void* brute_thread(void* id) {
         
         // Decrypt kv_header and compare to know serial number.
         rc4_init(rc4, buf2, 16);
-        rc4_crypt(rc4, kvheader, &buf4, 182);
+        rc4_crypt(rc4, kvheader, &buf4, 16368);
         
         // Compare The serial number.
         if(buf4[171] == (uint8_t)serial_num[11] &&
@@ -144,114 +118,10 @@ void* brute_thread(void* id) {
             pthread_exit(NULL);
         }
         else { // Get a new cpu key for next round.
-            switch(at) {
-                case 1:
-                case 3:
-                    MD5_Init(&mdcontext);
-                    MD5_Update(&mdcontext, (unsigned char *)kp, 16);
-                    MD5_Final((unsigned char*)kp, &mdcontext);
-                    break;
-                case 2:
-                case 4:
-                    if(kp[15] == 255) {
-                        kp[15] = 0;
-                        if(kp[14] == 255) {
-                            kp[14] = 0;
-                            if(kp[13] == 255) {
-                                kp[13] = 0;
-                                if(kp[12] == 255) {
-                                    kp[12] = 0;
-                                    if(kp[11] == 255) {
-                                        kp[11] = 0;
-                                        if(kp[10] == 255) {
-                                            kp[10] = 0;
-                                            if(kp[9] == 255) {
-                                                kp[9] = 0;
-                                                if(kp[8] == 255) {
-                                                    kp[8] = 0;
-                                                    if(kp[7] == 255) {
-                                                        kp[7] = 0;
-                                                        if(kp[6] == 255) {
-                                                            kp[6] = 0;
-                                                            if(kp[5] == 255) {
-                                                                kp[5] = 0;
-                                                                if(kp[4] == 255) {
-                                                                    kp[4] = 0;
-                                                                    if(kp[3] == 255) {
-                                                                        kp[3] = 0;
-                                                                        if(kp[2] == 255) {
-                                                                            kp[2] = 0;
-                                                                            if(kp[1] == 255) {
-                                                                                kp[1] = 0;
-                                                                                if(kp[0] == 255) {
-                                                                                    kp[0] = 0;
-                                                                                }
-                                                                                else {
-                                                                                    kp[0]++;
-                                                                                }
-                                                                            }
-                                                                            else {
-                                                                                kp[1]++;
-                                                                            }
-                                                                        }
-                                                                        else {
-                                                                            kp[2]++;
-                                                                        }
-                                                                    }
-                                                                    else {
-                                                                        kp[3]++;
-                                                                    }
-                                                                }
-                                                                else {
-                                                                    kp[4]++;
-                                                                }
-                                                            }
-                                                            else {
-                                                                kp[5]++;
-                                                            }
-                                                        }
-                                                        else {
-                                                            kp[6]++;
-                                                        }
-                                                    }
-                                                    else {
-                                                        kp[7]++;
-                                                    }
-                                                }
-                                                else {
-                                                    kp[8]++;
-                                                }
-                                            }
-                                            else {
-                                                kp[9]++;
-                                            }
-                                        }
-                                        else {
-                                            kp[10]++;
-                                        }
-                                    }
-                                    else {
-                                        kp[11]++;
-                                    }
-                                }
-                                else {
-                                    kp[12]++;
-                                }
-                            }
-                            else {
-                                kp[13]++;
-                            }
-                        }
-                        else {
-                            kp[14]++;
-                        }
-                    }
-                    else {
-                        kp[15]++;
-                    }
-                    break;
-            }
-        }
+			MD5_Init(&mdcontext);
+            MD5_Update(&mdcontext, (unsigned char *)kp, 16);
+			MD5_Final((unsigned char*)kp, &mdcontext);
+		}
         
         total_hashes++;
     }
@@ -286,13 +156,11 @@ int count_processors(void)
  */
 void usage() {
     printf("XCPUKey-Brute-Forcer - 0.1c Beta by Hect0r\n"
-           "Usage : cpu-gen [!keyvault_location] [!algo_type] [!serial_number] [thread_count] [start_seed]\n"
+           "Usage : cpu-gen [!keyvault_location] [!serial_number] [thread_count]\n"
            " NOTE : Each argument with a ! in it, needs to be set, without ! is optional.\n"
            "[keyvault_location] - The filepath to the ENCRYPTED keyvault.\n"
-           "[algo_type] - The also to use, can be 1, 2, 3, 4 (See Read Me).\n"
            "[serial_number] - Your console serial number, 12 numbers.\n"
-           "[thread_count] - The number of cpu threads to use, default: num of cpu cores.\n"
-           "[starting_seed] - The seed to start with, must be 16 bytes long.\n");
+           "[thread_count] - The number of cpu threads to use, default: num of cpu cores.\n");
 }
 /*
  * Main Entry point.
@@ -305,7 +173,7 @@ int main(int argc, char** argv) {
         return EXIT_SUCCESS;
     }
     
-    printf("XCPUKey-Brute-Forcer - 0.1c Beta by Hect0r\n");
+    printf("XCPUKey-Brute-Forcer - 0.1d Beta by Hect0r\n");
     
     FILE *kv = fopen(argv[1], "r");
     fseek(kv, 0, SEEK_SET);
@@ -324,9 +192,9 @@ int main(int argc, char** argv) {
         }
         printf("\n");
     }
-    kvheader = malloc(182);
+    kvheader = malloc(16368);
     fseek(kv, 16, SEEK_SET);
-    if(fread(kvheader, 182, 1, kv) != 1) {
+    if(fread(kvheader, 16368, 1, kv) != 1) {
         fprintf(stderr, "Unable to read kv header from KeyVault...\n");
         return 1;
     }
@@ -334,21 +202,19 @@ int main(int argc, char** argv) {
         printf("KV Header : ");
         
         t = 0;
-        while(t < 182) {
+        while(t < 16368) {
             printf("%02X", kvheader[t]);
             t++;
         }
         printf("\n");
     }
     
-    at = atoi(argv[2]);
-    
-    if(argc >= 4) {
+    if(argc >= 3) {
         t = 0;
         serial_num = malloc(12);
         if(debug == 1) { printf("Serial Number : "); }
         while(t < 12) {
-            serial_num[t] = (unsigned char)argv[3][t];
+            serial_num[t] = (unsigned char)argv[2][t];
             if(debug == 1) { printf("%02X", serial_num[t]); }
             t++;
         }
@@ -358,42 +224,19 @@ int main(int argc, char** argv) {
         fprintf(stderr, "Please provide your consoles serial number !");
         return 1;
     }
-    if(argc >= 5) {
-        nthreads = atoi(argv[4]);
+    if(argc >= 4) {
+        nthreads = atoi(argv[3]);
         
         if(nthreads < 0 || nthreads == 0 || nthreads > 16) {
             nthreads = count_processors();
         }
     
     }
-    
-    if(argc >= 6) {
-        if(strlen(argv[5]) != 32) {
-            fprintf(stderr, "The starting seed is invalid, minimum/maximum : 16 bytes\n");
-            return 1;
-        }
-        
-        t = 0;
-        cpu_key = malloc(16);
-        char* buf = hex_to_char(argv[5], 32);
-        if(debug == 1) { printf("Start Seed : "); }
-        while(t < 16) {
-            cpu_key[t] = (unsigned char)buf[t];
-            if(debug == 1) { printf("%02X", cpu_key[t]); }
-            t++;
-        }
-        if(debug == 1) { printf("\n"); }
-    }
-    else if(argc < 6 && (at == 3 || at == 4)) {
-        fprintf(stderr, "Invalid starting seed provided...\n");
-        return 1;
-    }
 
     if(debug == 1) {
         printf("KV Location %s\n"
-               "Num Threads is %d\n"
-               "Algo type : %d.\n", 
-                argv[1], nthreads, at);
+               "Num Threads is %d\n",
+                argv[1], nthreads);
     }
     
     pthread_t threads[nthreads];
@@ -420,7 +263,7 @@ int main(int argc, char** argv) {
         start = total_hashes;
         sleep(1);
         hashes = total_hashes - start;
-        if(tv_now.tv_sec - last_upd.tv_sec >= 5) {
+        if((tv_now.tv_sec - last_upd.tv_sec) >= 5) {
             printf("[ HPS : %d h/ps - Total : %" PRIu64 " ]\n", hashes, total_hashes);
             gettimeofday(&last_upd, NULL);
         }
