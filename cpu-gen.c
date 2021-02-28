@@ -24,36 +24,39 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <openssl/rand.h>
-#include <openssl/md5.h>
 #include <string.h>
 #include <pthread.h>
 #include <inttypes.h>
 #include <unistd.h>
 #include <sys/time.h>
 #include "util.h"
+#include "crypto/enc/rc4.h"
+#include "crypto/hash/hmac-sha1.h"
 
 // Globals.
 unsigned char *cpu_key, *serial_num;
 uint8_t *kvheader;
 uint8_t *hmac;
 
-int debug = 1, mine = 1;
+int debug = 0, mine = 1;
 uint64_t total_hashes = 0;
+
+typedef struct ModeOf {
+	uint64_t Start;
+	uint64_t Max;
+	int ThreadNum;
+} mode_t;
 
 /*
  * Brute Thread. old fashioned brute force the cpukey.
  */
-void* brute_thread(void* id) {
-    long tid = (long)id;
+void* brute_thread(void* buf) {
+    mode_t *tm = buf;
+    printf("#%d Thread Started (Starting Index: %" PRIu64 ", Max Index: %" PRIu64 ", Mode: Increment)...\n", tm->ThreadNum, tm->Start, tm->Max);
     
-    printf("Mining Thread Started : #%ld\n", tid);
-    
+	uint64_t key_buf[4] = { tm->Start, 0 };
     char key[16], *kp = key;
     unsigned char *hmac_buf, *hmac_key;
-    
-    // Init Hashing Support.
-    MD5_CTX mdcontext;
     
     // Init crypto support.
     rc4_state_t* rc4 = malloc(sizeof(rc4_state_t));
@@ -71,15 +74,10 @@ void* brute_thread(void* id) {
         kn++;
     }
     
-    // Set key based on random.
-    kn = 0;
-	while(kn < 16) {
-        kp[kn] = (char)rand() % 100 / 2;
-		kn++;
-	}
+	
     while(mine > 0) {
         // Generate Hmac Key for decryption.
-        hmac_key = HMAC_SHA1((const char*)kp, (const unsigned char*)hmac_buf);
+        hmac_key = HMAC_SHA1((char*)kp, (unsigned char*)hmac_buf);
         
         // Convert Hmac to uint8_t.
         kn = 0;
@@ -118,9 +116,35 @@ void* brute_thread(void* id) {
             pthread_exit(NULL);
         }
         else { // Get a new cpu key for next round.
-			MD5_Init(&mdcontext);
-            MD5_Update(&mdcontext, (unsigned char *)kp, 16);
-			MD5_Final((unsigned char*)kp, &mdcontext);
+			if(key_buf[0] == tm->Max) {
+				if(key_buf[1] == UINT64_MAX) {
+					mine = 0;
+					printf("Mining Thread #%d is complete, no key found on this thread :(\n", tm->ThreadNum);
+				}
+				else {
+					key_buf[0]++;
+				}
+			}
+			else {
+				key_buf[1]++;
+			}
+			
+			kp[7] = (char)(key_buf[0] & 0xFF);
+			kp[6] = (char)(key_buf[0] & 0x00FF) << 8;
+			kp[5] = (char)(key_buf[0] & 0x0000FF) << 16;
+			kp[4] = (char)(key_buf[0] & 0x000000FF) << 32;
+			kp[3] = (char)(key_buf[0] & 0x00000000FF) << 40;
+			kp[2] = (char)(key_buf[0] & 0x0000000000FF) << 48;
+			kp[1] = (char)(key_buf[0] & 0x000000000000FF) << 56;
+			kp[0] = (char)(key_buf[0] & 0x00000000000000FF) << 64;
+			kp[15] = (char)(key_buf[1] & 0xFF);
+			kp[14] = (char)(key_buf[1] & 0x00FF) << 8;
+			kp[13] = (char)(key_buf[1] & 0x0000FF) << 16;
+			kp[12] = (char)(key_buf[1] & 0x000000FF) << 32;
+			kp[11] = (char)(key_buf[1] & 0x00000000FF) << 40;
+			kp[10] = (char)(key_buf[1] & 0x0000000000FF) << 48;
+			kp[9] = (char)(key_buf[1] & 0x000000000000FF) << 56;
+			kp[8] = (char)(key_buf[1] & 0x00000000000000FF) << 64;
 		}
         
         total_hashes++;
@@ -165,6 +189,14 @@ void usage() {
 /*
  * Main Entry point.
  */
+ /*
+ unsigned char* uint64_to_uchar(uint64_t input) {
+	unsigned char *buf = malloc(sizeof(input));
+	memcpy(buf, &input, sizeof(input));
+	return buf;
+}
+uint64_t uchar_to_uint64(unsigned char *input, int start, bool reverse)
+*/
 int main(int argc, char** argv) {
     int nthreads = 0, t = 0, rc = 0;
     
@@ -244,12 +276,16 @@ int main(int argc, char** argv) {
     
     // Start Mining Threads.
     for(t = 0; t < nthreads; t++) {
-        rc = pthread_create(&threads[t], NULL, brute_thread, (void*)t);
+		mode_t *buf = malloc(sizeof(mode_t));
+		buf->ThreadNum = t;
+		buf->Start = ((UINT64_MAX / nthreads) * t);
+		buf->Max = buf->Start + (UINT64_MAX / nthreads); 
+        rc = pthread_create(&threads[t], NULL, brute_thread, (void*)buf);
         if (rc){
             fprintf(stderr, "ERROR: could not create thread %d\n", t);
             exit(1);
         }
-    }
+	}
     
     struct timeval last_upd;
     struct timeval tv_now;
