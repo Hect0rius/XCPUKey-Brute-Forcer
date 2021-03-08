@@ -54,8 +54,8 @@ void* brute_thread(void* buf) {
     mode_t *tm = buf;
     printf("#%d Thread Started (Starting Index: %" PRIu64 ", Max Index: %" PRIu64 ", Mode: Increment)...\n", tm->ThreadNum, tm->Start, tm->Max);
     
-	uint64_t key_buf[4] = { tm->Start, 0 };
-    char key[16], *kp = key;
+	uint64_t key_buf[2] = { tm->Start, 0 };
+    unsigned char key[16], *kp = key;
     unsigned char *hmac_buf, *hmac_key;
     
     // Init crypto support.
@@ -129,22 +129,22 @@ void* brute_thread(void* buf) {
 				key_buf[1]++;
 			}
 			
-			kp[7] = (char)(key_buf[0] & 0xFF);
-			kp[6] = (char)(key_buf[0] & 0x00FF) << 8;
-			kp[5] = (char)(key_buf[0] & 0x0000FF) << 16;
-			kp[4] = (char)(key_buf[0] & 0x000000FF) << 32;
-			kp[3] = (char)(key_buf[0] & 0x00000000FF) << 40;
-			kp[2] = (char)(key_buf[0] & 0x0000000000FF) << 48;
-			kp[1] = (char)(key_buf[0] & 0x000000000000FF) << 56;
-			kp[0] = (char)(key_buf[0] & 0x00000000000000FF) << 64;
-			kp[15] = (char)(key_buf[1] & 0xFF);
-			kp[14] = (char)(key_buf[1] & 0x00FF) << 8;
-			kp[13] = (char)(key_buf[1] & 0x0000FF) << 16;
-			kp[12] = (char)(key_buf[1] & 0x000000FF) << 32;
-			kp[11] = (char)(key_buf[1] & 0x00000000FF) << 40;
-			kp[10] = (char)(key_buf[1] & 0x0000000000FF) << 48;
-			kp[9] = (char)(key_buf[1] & 0x000000000000FF) << 56;
-			kp[8] = (char)(key_buf[1] & 0x00000000000000FF) << 64;
+			kp[7] = (unsigned char)((key_buf[0] & 0xFF));
+			kp[6] = (unsigned char)((key_buf[0] & 0x00FF) << 8);
+			kp[5] = (unsigned char)((key_buf[0] & 0x0000FF) << 16);
+			kp[4] = (unsigned char)((key_buf[0] & 0x000000FF) << 24);
+			kp[3] = (unsigned char)((key_buf[0] & 0x00000000FF) << 32);
+			kp[2] = (unsigned char)((key_buf[0] & 0x0000000000FF) << 40);
+			kp[1] = (unsigned char)((key_buf[0] & 0x000000000000FF) << 48);
+			kp[0] = (unsigned char)((key_buf[0] & 0x00000000000000FF) << 56);
+			kp[15] = (unsigned char)((key_buf[1] & 0xFF));
+			kp[14] = (unsigned char)((key_buf[1] & 0x00FF) << 8);
+			kp[13] = (unsigned char)((key_buf[1] & 0x0000FF) << 16);
+			kp[12] = (unsigned char)((key_buf[1] & 0x000000FF) << 24);
+			kp[11] = (unsigned char)((key_buf[1] & 0x00000000FF) << 32);
+			kp[10] = (unsigned char)((key_buf[1] & 0x0000000000FF) << 40);
+			kp[9] = (unsigned char)((key_buf[1] & 0x000000000000FF) << 48);
+			kp[8] = (unsigned char)((key_buf[1] & 0x00000000000000FF) << 56);
 		}
         
         total_hashes++;
@@ -205,9 +205,13 @@ int main(int argc, char** argv) {
         return EXIT_SUCCESS;
     }
     
-    printf("XCPUKey-Brute-Forcer - 0.1d Beta by Hect0r\n");
+    printf("XCPUKey-Brute-Forcer - 0.1e Beta by Hect0r\n");
     
     FILE *kv = fopen(argv[1], "r");
+	if(!kv) {
+		printf("Unable to open kv file...\n");
+		return 1;
+	}
     fseek(kv, 0, SEEK_SET);
     hmac = malloc(16);
     if(fread(hmac, 16, 1, kv) != 1) {
